@@ -1,0 +1,52 @@
+
+-- =============================
+-- SLA Logs KPI Analysis Notebook
+-- =============================
+
+-- 1. 날짜별 SLA 위반 건수 추이
+SELECT
+    DATE_TRUNC('day', date_gst) AS day,
+    COUNT(*) AS total_logs,
+    SUM(sla_breaches) AS total_breaches,
+    ROUND(SUM(sla_breaches) * 100.0 / COUNT(*), 2) AS breach_pct
+FROM sla.sla_log
+GROUP BY day
+ORDER BY day DESC;
+
+-- 2. Top 키워드 빈도
+SELECT
+    UNNEST(STRING_SPLIT(top_keywords, ',')) AS keyword,
+    COUNT(*) AS keyword_count
+FROM sla.sla_log
+GROUP BY keyword
+ORDER BY keyword_count DESC;
+
+-- 3. 발신자별 로그 기여도
+SELECT
+    UNNEST(STRING_SPLIT(top_senders, ',')) AS sender,
+    COUNT(*) AS log_count
+FROM sla.sla_log
+GROUP BY sender
+ORDER BY log_count DESC;
+
+-- 4. SLA Breach 상세 목록
+SELECT
+    date_gst,
+    group_name,
+    summary,
+    sla_breaches,
+    top_keywords,
+    top_senders
+FROM sla.sla_log
+WHERE sla_breaches > 0
+ORDER BY date_gst DESC;
+
+-- 5. 그룹별 KPI 비교
+SELECT
+    group_name,
+    COUNT(*) AS total_logs,
+    SUM(sla_breaches) AS total_breaches,
+    ROUND(SUM(sla_breaches) * 100.0 / COUNT(*), 2) AS breach_pct
+FROM sla.sla_log
+GROUP BY group_name
+ORDER BY breach_pct DESC;

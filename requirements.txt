@@ -1,0 +1,8 @@
+fastapi
+uvicorn[standard]
+duckdb
+psutil
+pyyaml
+pandas
+reportlab
+schedule

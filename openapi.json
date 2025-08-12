@@ -1,0 +1,413 @@
+﻿{
+    "openapi":  "3.1.1",
+    "info":  {
+                 "title":  "HVDC WhatsApp â Local KPI Store (FastAPI + DuckDB)",
+                 "version":  "2.0.0",
+                 "description":  "CSV/SQLite ì ì¥ + ë©±ë±ì± + HMAC + KPI + DuckDB ì°ë.\në¡ì»¬ ì ì©. Swagger/Viewer í¸íì ìí´ serversë https://localhost ê³ ì .\n"
+             },
+    "servers":  [
+                    {
+                        "url":  "https://localhost",
+                        "description":  "Root origin ê³ ì (í¬í¸/HTTP ê¸ì§)"
+                    }
+                ],
+    "components":  {
+                       "securitySchemes":  {
+                                               "ApiKeyHeader":  {
+                                                                    "type":  "apiKey",
+                                                                    "in":  "header",
+                                                                    "name":  "X-API-Key",
+                                                                    "description":  "ë¡ì»¬ ê°ë° í¤ë¥¼ X-API-Key í¤ëë¡ ì ë¬"
+                                                                }
+                                           },
+                       "schemas":  {
+                                       "AppendLogRequest":  {
+                                                                "type":  "object",
+                                                                "required":  [
+                                                                                 "date_gst",
+                                                                                 "group_name",
+                                                                                 "summary"
+                                                                             ],
+                                                                "properties":  {
+                                                                                   "request_id":  {
+                                                                                                      "type":  "string",
+                                                                                                      "description":  "Idempotency key (UUID ê¶ì¥)",
+                                                                                                      "example":  "550e8400-e29b-41d4-a716-446655440000"
+                                                                                                  },
+                                                                                   "date_gst":  {
+                                                                                                    "type":  "string",
+                                                                                                    "description":  "GST local time, format: YYYY-MM-DD HH:mm",
+                                                                                                    "pattern":  "^\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}$",
+                                                                                                    "example":  "2025-08-09 10:00"
+                                                                                                },
+                                                                                   "group_name":  {
+                                                                                                      "type":  "string",
+                                                                                                      "maxLength":  200,
+                                                                                                      "example":  "Jopetwil 71 Group"
+                                                                                                  },
+                                                                                   "summary":  {
+                                                                                                   "type":  "string",
+                                                                                                   "maxLength":  5000,
+                                                                                                   "example":  "High tide paused offloading; resume 08:00 next day."
+                                                                                               },
+                                                                                   "top_keywords":  {
+                                                                                                        "type":  "array",
+                                                                                                        "items":  {
+                                                                                                                      "type":  "string",
+                                                                                                                      "maxLength":  64
+                                                                                                                  },
+                                                                                                        "example":  [
+                                                                                                                        "High tide",
+                                                                                                                        "AGI",
+                                                                                                                        "Offloading"
+                                                                                                                    ]
+                                                                                                    },
+                                                                                   "sla_breaches":  {
+                                                                                                        "type":  "integer",
+                                                                                                        "minimum":  0,
+                                                                                                        "example":  0
+                                                                                                    },
+                                                                                   "attachments":  {
+                                                                                                       "type":  "array",
+                                                                                                       "items":  {
+                                                                                                                     "type":  "string",
+                                                                                                                     "description":  "URL or filename"
+                                                                                                                 }
+                                                                                                   },
+                                                                                   "signature":  {
+                                                                                                     "type":  "string",
+                                                                                                     "description":  "Optional HMAC-SHA256 Base64 of raw body"
+                                                                                                 }
+                                                                               }
+                                                            },
+                                       "AppendResponse":  {
+                                                              "type":  "object",
+                                                              "properties":  {
+                                                                                 "status":  {
+                                                                                                "type":  "string",
+                                                                                                "example":  "ok"
+                                                                                            },
+                                                                                 "idempotency_key":  {
+                                                                                                         "type":  "string",
+                                                                                                         "example":  "zQDLLv-azHJ3..."
+                                                                                                     },
+                                                                                 "attempt":  {
+                                                                                                 "type":  "integer",
+                                                                                                 "example":  1
+                                                                                             },
+                                                                                 "priority":  {
+                                                                                                  "type":  "string",
+                                                                                                  "example":  "FYI"
+                                                                                              },
+                                                                                 "sla_breach":  {
+                                                                                                    "type":  "number",
+                                                                                                    "example":  0
+                                                                                                },
+                                                                                 "message":  {
+                                                                                                 "type":  "string",
+                                                                                                 "example":  "Queued for retry (q_xxx)"
+                                                                                             }
+                                                                             }
+                                                          },
+                                       "GetRowsResponse":  {
+                                                               "type":  "object",
+                                                               "properties":  {
+                                                                                  "status":  {
+                                                                                                 "type":  "string",
+                                                                                                 "example":  "ok"
+                                                                                             },
+                                                                                  "rows":  {
+                                                                                               "type":  "array",
+                                                                                               "description":  "ìí¸ í¤ë 1í + ë°ì´í° íë¤. ê° íì ë¬¸ìì´ ë°°ì´.",
+                                                                                               "items":  {
+                                                                                                             "type":  "array",
+                                                                                                             "items":  "@{oneOf=System.Object[]}"
+                                                                                                         }
+                                                                                           },
+                                                                                  "timestamp":  {
+                                                                                                    "type":  "string",
+                                                                                                    "example":  "2025-08-09 13:53:51"
+                                                                                                }
+                                                                              }
+                                                           },
+                                       "KpiResponse":  {
+                                                           "type":  "object",
+                                                           "properties":  {
+                                                                              "status":  {
+                                                                                             "type":  "string",
+                                                                                             "example":  "ok"
+                                                                                         },
+                                                                              "items":  {
+                                                                                            "type":  "array",
+                                                                                            "items":  {
+                                                                                                          "type":  "object",
+                                                                                                          "properties":  "@{date=; group_name=; logs=; sla_breaches=}"
+                                                                                                      }
+                                                                                        }
+                                                                          }
+                                                       },
+                                       "MetricsResponse":  {
+                                                               "type":  "object",
+                                                               "required":  [
+                                                                                "status",
+                                                                                "uptime_seconds"
+                                                                            ],
+                                                               "properties":  {
+                                                                                  "status":  {
+                                                                                                 "type":  "string",
+                                                                                                 "example":  "ok"
+                                                                                             },
+                                                                                  "uptime_seconds":  {
+                                                                                                         "type":  "number",
+                                                                                                         "example":  1234.56
+                                                                                                     },
+                                                                                  "processed":  {
+                                                                                                    "type":  "integer",
+                                                                                                    "example":  42
+                                                                                                },
+                                                                                  "queue_depth":  {
+                                                                                                      "type":  "integer",
+                                                                                                      "example":  0
+                                                                                                  },
+                                                                                  "duckdb_connected":  {
+                                                                                                           "type":  "boolean",
+                                                                                                           "example":  true
+                                                                                                       },
+                                                                                  "timestamp":  {
+                                                                                                    "type":  "string",
+                                                                                                    "example":  "2025-08-09T13:55:00Z"
+                                                                                                }
+                                                                              }
+                                                           },
+                                       "ErrorResponse":  {
+                                                             "type":  "object",
+                                                             "properties":  {
+                                                                                "status":  {
+                                                                                               "type":  "string",
+                                                                                               "example":  "error"
+                                                                                           },
+                                                                                "message":  {
+                                                                                                "type":  "string",
+                                                                                                "example":  "Unauthorized"
+                                                                                            }
+                                                                            }
+                                                         }
+                                   }
+                   },
+    "security":  [
+                     {
+                         "ApiKeyHeader":  [
+
+                                          ]
+                     }
+                 ],
+    "paths":  {
+                  "/health":  {
+                                  "get":  {
+                                              "operationId":  "getHealth",
+                                              "tags":  [
+                                                           "Ops"
+                                                       ],
+                                              "summary":  "Health check",
+                                              "responses":  {
+                                                                "200":  {
+                                                                            "description":  "OK",
+                                                                            "content":  {
+                                                                                            "application/json":  "@{schema=}"
+                                                                                        }
+                                                                        }
+                                                            }
+                                          }
+                              },
+                  "/logs":  {
+                                "post":  {
+                                             "operationId":  "appendLog",
+                                             "tags":  [
+                                                          "Logs"
+                                                      ],
+                                             "summary":  "Append WhatsApp summary",
+                                             "description":  "Logs í\u0085ì´ë¸(ëë CSV/SQLite)ì ì ìì½ ì¶ê°. request_id ë©±ë±.",
+                                             "security":  [
+                                                              {
+                                                                  "ApiKeyHeader":  [
+
+                                                                                   ]
+                                                              }
+                                                          ],
+                                             "requestBody":  {
+                                                                 "required":  true,
+                                                                 "content":  {
+                                                                                 "application/json":  {
+                                                                                                          "schema":  "@{$ref=#/components/schemas/AppendLogRequest}"
+                                                                                                      }
+                                                                             }
+                                                             },
+                                             "responses":  {
+                                                               "200":  {
+                                                                           "description":  "OK (ëë í ì ì¥)",
+                                                                           "content":  {
+                                                                                           "application/json":  "@{schema=}"
+                                                                                       }
+                                                                       },
+                                                               "400":  {
+                                                                           "description":  "Bad Request",
+                                                                           "content":  {
+                                                                                           "application/json":  "@{schema=}"
+                                                                                       }
+                                                                       },
+                                                               "401":  {
+                                                                           "description":  "Unauthorized",
+                                                                           "content":  {
+                                                                                           "application/json":  "@{schema=}"
+                                                                                       }
+                                                                       }
+                                                           }
+                                         }
+                            },
+                  "/hvdc/run":  {
+                                    "post":  {
+                                                 "operationId":  "runHvdc",
+                                                 "tags":  [
+                                                              "HVDC"
+                                                          ],
+                                                 "summary":  "Run HVDC pipeline (BronzeâSilver)",
+                                                 "security":  [
+                                                                  {
+                                                                      "ApiKeyHeader":  [
+
+                                                                                       ]
+                                                                  }
+                                                              ],
+                                                 "responses":  {
+                                                                   "200":  {
+                                                                               "description":  "OK",
+                                                                               "content":  {
+                                                                                               "application/json":  "@{schema=}"
+                                                                                           }
+                                                                           },
+                                                                   "500":  {
+                                                                               "description":  "Server Error",
+                                                                               "content":  {
+                                                                                               "application/json":  "@{schema=}"
+                                                                                           }
+                                                                           }
+                                                               }
+                                             }
+                                },
+                  "/hvdc/transform":  {
+                                          "post":  {
+                                                       "operationId":  "execTransformSql",
+                                                       "tags":  [
+                                                                    "HVDC"
+                                                                ],
+                                                       "summary":  "Execute transform.sql in DuckDB",
+                                                       "security":  [
+                                                                        {
+                                                                            "ApiKeyHeader":  [
+
+                                                                                             ]
+                                                                        }
+                                                                    ],
+                                                       "responses":  {
+                                                                         "200":  {
+                                                                                     "description":  "OK",
+                                                                                     "content":  {
+                                                                                                     "application/json":  "@{schema=}"
+                                                                                                 }
+                                                                                 }
+                                                                     }
+                                                   }
+                                      },
+                  "/kpi":  {
+                               "get":  {
+                                           "operationId":  "getKpi",
+                                           "tags":  [
+                                                        "KPI"
+                                                    ],
+                                           "summary":  "Query KPI (JSON)",
+                                           "security":  [
+                                                            {
+                                                                "ApiKeyHeader":  [
+
+                                                                                 ]
+                                                            }
+                                                        ],
+                                           "parameters":  [
+                                                              {
+                                                                  "name":  "since",
+                                                                  "in":  "query",
+                                                                  "required":  false,
+                                                                  "schema":  {
+                                                                                 "type":  "string"
+                                                                             },
+                                                                  "description":  "YYYY-MM-DD ëë ISO8601"
+                                                              },
+                                                              {
+                                                                  "name":  "group_name",
+                                                                  "in":  "query",
+                                                                  "required":  false,
+                                                                  "schema":  {
+                                                                                 "type":  "string"
+                                                                             }
+                                                              }
+                                                          ],
+                                           "responses":  {
+                                                             "200":  {
+                                                                         "description":  "OK",
+                                                                         "content":  {
+                                                                                         "application/json":  "@{schema=}"
+                                                                                     }
+                                                                     }
+                                                         }
+                                       }
+                           },
+                  "/kpi/export.csv":  {
+                                          "get":  {
+                                                      "operationId":  "exportKpiCsv",
+                                                      "tags":  [
+                                                                   "KPI"
+                                                               ],
+                                                      "summary":  "Export KPI as CSV (stream)",
+                                                      "security":  [
+                                                                       {
+                                                                           "ApiKeyHeader":  [
+
+                                                                                            ]
+                                                                       }
+                                                                   ],
+                                                      "responses":  {
+                                                                        "200":  {
+                                                                                    "description":  "CSV stream",
+                                                                                    "content":  {
+                                                                                                    "text/csv":  "@{schema=}"
+                                                                                                }
+                                                                                }
+                                                                    }
+                                                  }
+                                      },
+                  "/metrics":  {
+                                   "get":  {
+                                               "operationId":  "getMetrics",
+                                               "tags":  [
+                                                            "Ops"
+                                                        ],
+                                               "summary":  "Basic process metrics",
+                                               "security":  [
+                                                                {
+                                                                    "ApiKeyHeader":  [
+
+                                                                                     ]
+                                                                }
+                                                            ],
+                                               "responses":  {
+                                                                 "200":  {
+                                                                             "description":  "OK",
+                                                                             "content":  {
+                                                                                             "application/json":  "@{schema=}"
+                                                                                         }
+                                                                         }
+                                                             }
+                                           }
+                               }
+              }
+}

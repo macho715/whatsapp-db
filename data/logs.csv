@@ -1,0 +1,27 @@
+date_gst,group_name,summary,top_keywords,sla_breaches,attachments,created_at,request_id,processed_status
+2025-08-09 10:00,Jopetwil 71 Group,High tide paused offloading; resume at 08:00; next loading 10-Aug.,"[""High tide"", ""AGI"", ""Offloading""]",0,[],2025-08-09T19:35:32,550e8400-e29b-41d4-a716-446655440000,ok
+2025-08-09 11:00,Jopetwil 71 Group,Offloading completed successfully; next vessel scheduled for 14:00,"[""Offloading"", ""Vessel"", ""Schedule""]",0,[],2025-08-09T19:39:59,550e8400-e29b-41d4-a716-446655440001,ok
+2025-08-10 00:37,[HVDC] Project Lightning,Test entry via test-scenario,"[""Test""]",0,[],2025-08-09T20:37:56,,ok
+2025-08-10 01:11,[HVDC] Project Lightning,Morning SITREP posted. All vessels on schedule; CCU returns within SLA. Next plan review at 16:00.,"[""SITREP"", ""vessel"", ""schedule"", ""CCU"", ""plan""]",0,"[""20250810_HVDC_SITREP_v01.pdf""]",2025-08-09T21:11:06,,ok
+2025-08-10 18:30,[HVDC] Project Lightning,"DAS Damaged Box 수리 후 JPT71 로딩 예정(15~16일). SCT-40HH-0001 재배치 지시. VP-24 Siemens Box stuffing(BA TF-20F-067, BA TF-20F-003), Crane 지연→8T FLIFT 대체, 잔여 15pkg 내일. HE 457 MOSB·HE 374/377 Mirfa 긴급 배송 준비. Cladding 주간 계획 확인, DAS CCU 부족 보고. Bushra Al Masood 도착.","[""DAS"", ""VP24"", ""Siemens"", ""Crane"", ""Cladding""]",2,[],2025-08-10T17:57:35,,ok
+2025-08-10 10:00,[HVDC] Project Lightning,Test log entry,"[""test""]",0,[],2025-08-10T18:39:49,,ok
+2025-08-10 23:11,[HVDC] Project Lightning,GUI connection test log,"[""connection"", ""test""]",0,[],2025-08-10T19:11:34,6bce433c-8697-47c0-9b64-c1cafc3fe824,ok
+2025-08-10 23:11,[HVDC] Project Lightning,GUI connection test log,"[""connection"", ""test""]",0,[],2025-08-10T19:11:49,df79a68c-206f-46f4-8767-c2f2b389b2f0,ok
+2025-08-10 23:23,[HVDC] Project Lightning,GUI connection test log,"[""connection"", ""test""]",0,[],2025-08-10T19:23:43,06499850-f7d1-4046-8400-901d1871270c,ok
+2025-08-10 23:26,[HVDC] Project Lightning,GUI connection test log,"[""connection"", ""test""]",0,[],2025-08-10T19:26:32,5d7589a8-43dc-424a-83b2-1ab20c430bdf,ok
+2025-08-10 23:30,[HVDC] Project Lightning,GUI connection test log,"[""connection"", ""test""]",0,[],2025-08-10T19:30:37,e5f9bc8d-847b-4732-b12b-7e220b332621,ok
+2025-08-10 23:35,[HVDC] Project Lightning,GUI connection test log,"[""connection"", ""test""]",0,[],2025-08-10T19:35:34,a2cdcca9-d329-4467-9755-d3bb8d97cbf7,ok
+2025-08-10 23:41,[HVDC] Project Lightning,GUI connection test log,"[""connection"", ""test""]",0,[],2025-08-10T19:41:47,9679c7aa-a07d-4a2b-9a50-dba950d298ab,ok
+2025-08-10 23:51,[HVDC] Project Lightning,GUI connection test log,"[""connection"", ""test""]",0,[],2025-08-10T19:51:37,d47ee6cf-d6f3-41b7-a891-02fd087bfe6e,ok
+2025-08-10 23:51,[HVDC] Project Lightning,GUI connection test log,"[""connection"", ""test""]",0,[],2025-08-10T19:51:43,552d3b1c-560a-4ee1-a981-d3653106a247,ok
+2025-08-11 00:01,[HVDC] Project Lightning,GUI connection test log,"[""connection"", ""test""]",0,[],2025-08-10T20:01:37,eed611bc-5456-44f8-87ff-8b4fae89f2f8,ok
+2025-08-11 00:29,[HVDC] Project Lightning,GUI connection test log,"[""connection"", ""test""]",0,[],2025-08-10T20:29:09,2ad51a56-c3ee-4388-84a7-385b4a432031,ok
+2025-08-11 01:11,[HVDC] Project Lightning,GUI connection test log,"[""connection"", ""test""]",0,[],2025-08-10T21:11:10,bfd401ef-7df7-44d2-9873-57f46d4be7a3,ok
+2025-08-11 07:26,[HVDC] Project Lightning,GUI connection test log,"[""connection"", ""test""]",0,[],2025-08-11T03:26:05,8847ede2-e614-4ad5-89fd-54dc75959e11,ok
+2025-08-11 07:26,[HVDC] Project Lightning,GUI connection test log,"[""connection"", ""test""]",0,[],2025-08-11T03:26:26,2c6b24b0-435b-42c1-8a43-2e3d6a5e773c,ok
+2025-08-12 07:18,[HVDC] Project Lightning,GUI connection test log,"[""connection"", ""test""]",0,[],2025-08-12T03:18:12,5dff7b06-2a0e-4e27-8630-8b977582d076,ok
+2025-08-12 07:21,[HVDC] Project Lightning,GUI connection test log,"[""connection"", ""test""]",0,[],2025-08-12T03:21:00,02a360bd-b286-4cd1-917b-ba6625ed7c3c,ok
+2025-08-12 21:43,[HVDC] Project Lightning,GUI connection test log,"[""connection"", ""test""]",0,[],2025-08-12T17:43:45,5237a7a4-381c-4013-868a-92af7dcb8f45,ok
+2025-08-12 21:53,[HVDC] Project Lightning,GUI connection test log,"[""connection"", ""test""]",0,[],2025-08-12T17:53:04,cdeae812-bcc7-4405-adfa-4971f0a03721,ok
+2025-08-12 21:53,[HVDC] Project Lightning,GUI connection test log,"[""connection"", ""test""]",0,[],2025-08-12T17:53:42,bd19fce2-ae7a-4d2c-a6f2-5f79a1803f12,ok
+2025-08-12 22:01,[HVDC] Project Lightning,GUI connection test log,"[""connection"", ""test""]",0,[],2025-08-12T18:01:07,77debeb2-516b-4325-b83c-042e98f94f37,ok
