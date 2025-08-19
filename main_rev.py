@@ -21,8 +21,12 @@ from hvdc_logs.pipeline_sequence import run_pipeline_sequence
 # --- 설정 ---
 API_KEY = os.getenv("API_KEY", "")  # 선택
 HMAC_SECRET = os.getenv("HMAC_SECRET", "")  # 선택
-# 우선순위: HVDC_DATA_DIR > DATA_DIR > ./data
-DATA_DIR = Path(os.getenv("HVDC_DATA_DIR") or os.getenv("DATA_DIR", "data"))
+# 우선순위: WHATSAPP_DB_PATH > HVDC_DATA_DIR > DATA_DIR > 기본 경로
+DATA_DIR = Path(
+    os.getenv("WHATSAPP_DB_PATH")
+    or os.getenv("HVDC_DATA_DIR")
+    or os.getenv("DATA_DIR", r"C:\\cursor-mcp\\whatsapp db\\data")
+)
 CSV_PATH = DATA_DIR / "logs.csv"
 SQLITE_PATH = DATA_DIR / "logs.sqlite"
 # WhatsApp JSON 저장 루트 (선택)
