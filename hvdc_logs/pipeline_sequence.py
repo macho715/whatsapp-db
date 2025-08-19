@@ -1,10 +1,11 @@
-﻿import subprocess, os, duckdb
+﻿import subprocess, os
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DUCKDB_FILE = os.path.join(BASE_DIR, 'duckdb', 'hvdc.duckdb')
 TRANSFORM_SQL = os.path.join(BASE_DIR, 'transform.sql')
 
 def run_pipeline_sequence():
+    import duckdb  # Lazy import to avoid import-time failure during API startup
     subprocess.run(['python', os.path.join(BASE_DIR, 'bronze_stage.py')], check=True)
     subprocess.run(['python', os.path.join(BASE_DIR, 'silver_stage.py')], check=True)
 

@@ -3,15 +3,25 @@ import requests
 import uuid
 import datetime
 import subprocess
-import psutil
 import os
+import sys
 import json
 import time
+import hmac, hashlib, base64
+
+# psutil은 ARM/Windows 환경에서 wheel 부재 시 설치가 어려울 수 있어 선택적으로 사용
+try:
+	import psutil  # type: ignore
+	PSUTIL_AVAILABLE = True
+except Exception:
+	psutil = None  # type: ignore
+	PSUTIL_AVAILABLE = False
 
 # ===== 설정 =====
-BASE_URL = "http://127.0.0.1:8010"
-API_KEY = None
-UVICORN_CMD = ["python", "-m", "uvicorn", "main:app", "--host", "127.0.0.1", "--port", "8010", "--log-level", "info"]
+BASE_URL = os.getenv("HVDC_API_BASE", "http://127.0.0.1:8010")
+API_KEY = os.getenv("API_KEY")
+# venv 파이썬 보장 실행을 위해 현재 인터프리터 사용
+UVICORN_CMD = [sys.executable, "-m", "uvicorn", "main:app", "--host", "127.0.0.1", "--port", "8010", "--log-level", "info"]
 UVICORN_PROCESS = None
 LOG_FILE = "access_log.jsonl"
 
@@ -21,17 +31,32 @@ if API_KEY:
 
 # ===== uvicorn 프로세스 감지 =====
 def detect_uvicorn():
-    for proc in psutil.process_iter(attrs=['pid', 'name', 'cmdline']):
-        try:
-            cmdline_list = proc.info.get('cmdline')
-            if not cmdline_list:
-                continue
-            cmdline = " ".join(cmdline_list).lower()
-            if "uvicorn" in cmdline and "main:app" in cmdline:
-                return proc.info['pid']
-        except (psutil.NoSuchProcess, psutil.AccessDenied):
-            continue
-    return None
+	# psutil이 가능하면 기존 방식 사용
+	if PSUTIL_AVAILABLE:
+		for proc in psutil.process_iter(attrs=['pid', 'name', 'cmdline']):
+			try:
+				cmdline_list = proc.info.get('cmdline')
+				if not cmdline_list:
+					continue
+				cmdline = " ".join(cmdline_list).lower()
+				if "uvicorn" in cmdline and "main:app" in cmdline:
+					return proc.info['pid']
+			except Exception:
+				continue
+		return None
+
+	# PowerShell을 이용한 fallback (cmdline에 uvicorn과 main:app 포함 여부로 탐지)
+	try:
+		ps_cmd = (
+			"Get-CimInstance Win32_Process | "
+			"Where-Object { $_.CommandLine -and $_.CommandLine -match 'uvicorn' -and $_.CommandLine -match 'main:app' } | "
+			"Select-Object -First 1 -ExpandProperty ProcessId"
+		)
+		out = subprocess.check_output(["powershell", "-NoProfile", "-Command", ps_cmd], stderr=subprocess.STDOUT, text=True)
+		pid_str = out.strip()
+		return int(pid_str) if pid_str else None
+	except Exception:
+		return None
 
 # ===== API 기능 =====
 def check_health():
@@ -49,7 +74,15 @@ def append_test_log():
         "attachments": [],
         "request_id": str(uuid.uuid4())
     }
-    r = requests.post(f"{BASE_URL}/logs", json=payload, headers=headers, timeout=5)
+    sig = None
+    if os.getenv("HMAC_SECRET"):
+        raw = json.dumps(payload, ensure_ascii=False, separators=(",", ":"), sort_keys=True).encode("utf-8")
+        mac = hmac.new(os.getenv("HMAC_SECRET").encode("utf-8"), raw, hashlib.sha256).digest()
+        sig = base64.b64encode(mac).decode("ascii")
+    req_headers = dict(headers)
+    if sig:
+        req_headers["X-Signature"] = sig
+    r = requests.post(f"{BASE_URL}/logs", json=payload, headers=req_headers, timeout=10)
     r.raise_for_status()
     return r.json()
 
@@ -73,16 +106,25 @@ def start_server():
     return f"✅ 서버 시작됨 (PID {UVICORN_PROCESS.pid})"
 
 def stop_server():
-    global UVICORN_PROCESS
-    existing_pid = detect_uvicorn()
-    if existing_pid:
-        try:
-            psutil.Process(existing_pid).terminate()
-            UVICORN_PROCESS = None
-            return f"🛑 서버 종료됨 (PID {existing_pid})"
-        except Exception as e:
-            return f"❌ 종료 실패: {e}"
-    return "⚠ 실행 중인 서버가 없습니다."
+	global UVICORN_PROCESS
+	existing_pid = detect_uvicorn()
+	if existing_pid:
+		# psutil이 가능하면 우아하게 종료 시도
+		if PSUTIL_AVAILABLE:
+			try:
+				psutil.Process(existing_pid).terminate()
+				UVICORN_PROCESS = None
+				return f"🛑 서버 종료됨 (PID {existing_pid})"
+			except Exception as e:
+				return f"❌ 종료 실패: {e}"
+		# fallback: taskkill 강제 종료
+		try:
+			subprocess.check_output(["taskkill", "/PID", str(existing_pid), "/F"], stderr=subprocess.STDOUT)
+			UVICORN_PROCESS = None
+			return f"🛑 서버 종료됨 (PID {existing_pid})"
+		except Exception as e:
+			return f"❌ 종료 실패: {e}"
+	return "⚠ 실행 중인 서버가 없습니다."
 
 # ===== 로그 읽기 =====
 def read_latest_logs(last_size):

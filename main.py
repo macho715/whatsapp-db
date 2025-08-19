@@ -1,9 +1,10 @@
-from fastapi import FastAPI, Header, HTTPException, Request, Query, APIRouter
+from fastapi import FastAPI, Header, HTTPException, Request, Query, APIRouter, BackgroundTasks
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from typing import List, Optional
 from datetime import datetime, timezone, timedelta
 import base64, hmac, hashlib, os, csv, sqlite3, json
+import uuid
 from pathlib import Path
 import subprocess
 import sys
@@ -11,7 +12,12 @@ import os
 from fastapi.openapi.utils import get_openapi
 import threading
 import time
-import psutil
+try:
+    import psutil  # type: ignore
+    _PSUTIL_AVAILABLE = True
+except Exception:
+    psutil = None  # type: ignore
+    _PSUTIL_AVAILABLE = False
 import json, re
 import io
 from fastapi import Response
@@ -21,8 +27,12 @@ from hvdc_logs.pipeline_sequence import run_pipeline_sequence
 # --- 설정 ---
 API_KEY = os.getenv("API_KEY", "")  # 선택
 HMAC_SECRET = os.getenv("HMAC_SECRET", "")  # 선택
-# 우선순위: HVDC_DATA_DIR > DATA_DIR > ./data
-DATA_DIR = Path(os.getenv("HVDC_DATA_DIR") or os.getenv("DATA_DIR", "data"))
+# 우선순위: WHATSAPP_DB_PATH > HVDC_DATA_DIR > DATA_DIR > 기본 경로
+DATA_DIR = Path(
+    os.getenv("WHATSAPP_DB_PATH")
+    or os.getenv("HVDC_DATA_DIR")
+    or os.getenv("DATA_DIR", r"C:\\cursor-mcp\\whatsapp db\\data")
+)
 CSV_PATH = DATA_DIR / "logs.csv"
 SQLITE_PATH = DATA_DIR / "sqlite"
 # WhatsApp JSON 저장 루트 (선택)
@@ -113,7 +123,9 @@ def write_bronze_jsonl(item: dict) -> Path:
     """로그를 Bronze JSONL 파일에 자동 적재"""
     dt = datetime.strptime(item["date_gst"], "%Y-%m-%d %H:%M").replace(tzinfo=GST)
     y, m, d = dt.strftime("%Y"), dt.strftime("%m"), dt.strftime("%Y-%m-%d")
-    group = item["group_name"].strip().replace(" ", "-")
+    # 파일명 안전 문자만 허용: 영문/숫자/._- (연속 하이픈 정규화)
+    safe = re.sub(r'[^A-Za-z0-9._-]+', '-', item["group_name"].strip())
+    group = re.sub(r'-{2,}', '-', safe).strip('-')
     outdir = BRONZE_ROOT / y / m
     outdir.mkdir(parents=True, exist_ok=True)
     fn = outdir / f"{d}_{group}.jsonl"
@@ -417,6 +429,7 @@ def debug_paths():
             "whatsapp_log_dir": WHATSAPP_LOG_DIR.exists(),
         },
         "env": {
+            "WHATSAPP_DB_PATH": os.getenv("WHATSAPP_DB_PATH"),
             "HVDC_DATA_DIR": os.getenv("HVDC_DATA_DIR"),
             "DATA_DIR": os.getenv("DATA_DIR"),
             "HVDC_WHATSAPP_LOG_DIR": os.getenv("HVDC_WHATSAPP_LOG_DIR"),
@@ -450,7 +463,8 @@ async def append_log(
     req: Request,
     payload: AppendLogRequest,
     x_api_key: Optional[str] = Header(None),
-    x_signature: Optional[str] = Header(None)
+    x_signature: Optional[str] = Header(None),
+    background_tasks: BackgroundTasks = None,
 ):
     _require_api_key(x_api_key)
     raw = await req.body()
@@ -482,8 +496,12 @@ async def append_log(
     except Exception as e:
         bronze_status = f"Bronze failed: {str(e)}"
 
-    # HVDC 파이프라인 자동 트리거 (디바운스)
-    trigger_hvdc_pipeline_debounced()
+    # HVDC 파이프라인 자동 트리거 (응답 후 비동기 실행)
+    if background_tasks is not None:
+        background_tasks.add_task(trigger_hvdc_pipeline_debounced)
+    else:
+        # fallback (일부 실행환경에서 BackgroundTasks 미주입 시)
+        trigger_hvdc_pipeline_debounced()
 
     return {
         "status": "ok",
@@ -525,38 +543,34 @@ def run_hvdc_pipeline(x_api_key: Optional[str] = Header(None)):
     return _run_hvdc_pipeline()
 
 @app.post("/hvdc/transform")
-def hvdc_transform(x_api_key: Optional[str] = Header(None)):
-    """Execute transform.sql in DuckDB directly (cwd set to hvdc_logs)"""
+def hvdc_transform(background: BackgroundTasks, x_api_key: Optional[str] = Header(None)):
+    """Trigger WSL-based DuckDB pipeline asynchronously (returns 202)."""
     _require_api_key(x_api_key)
 
-    if not HVDC_TRANSFORM_SQL.exists():
-        return JSONResponse(status_code=500, content={
-            "status": "error",
-            "message": f"transform.sql not found at {HVDC_TRANSFORM_SQL.resolve()}"
-        })
+    # Build WSL command (quote spaces in path)
+    wsl_cmd = (
+        r"wsl -d Ubuntu -- bash -lc "
+        r"\"source ~/hvdc311/bin/activate && "
+        r"cd '/mnt/c/cursor-mcp/whatsapp db/hvdc_logs' && "
+        r"python3 run_pipeline.py >> pipeline_last_wsl.log 2>&1\""
+    )
 
-    try:
-        import duckdb
-        original_cwd = os.getcwd()
-        sql_abs_path = HVDC_TRANSFORM_SQL if HVDC_TRANSFORM_SQL.is_absolute() else (Path(original_cwd) / HVDC_TRANSFORM_SQL).resolve()
-        os.chdir(str(HVDC_BASE))
+    def _trigger_wsl():
         try:
-            conn = duckdb.connect(str(DUCKDB_PATH.absolute()))
-            conn.execute(f"RUN '{sql_abs_path.as_posix()}'")
-            conn.close()
-        finally:
-            os.chdir(original_cwd)
+            # Use PowerShell to run WSL command detached
+            import subprocess, shlex
+            ps_cmd = "powershell -NoProfile -Command " + wsl_cmd
+            subprocess.Popen(shlex.split(ps_cmd), shell=False)
+        except Exception:
+            pass
 
-        return {"status": "ok", "message": f"transform.sql executed successfully at {sql_abs_path}"}
-
-    except Exception as e:
-        import traceback
-        error_trace = traceback.format_exc()
-        return JSONResponse(status_code=500, content={
-            "status": "error",
-            "message": f"transform.sql execution failed: {str(e)}",
-            "traceback": error_trace
-        })
+    background.add_task(_trigger_wsl)
+    job_id = str(uuid.uuid4())
+    return Response(
+        content=f"{datetime.now(timezone.utc).isoformat()} | accepted | job={job_id}",
+        media_type="text/plain",
+        status_code=202,
+    )
 
 @app.get("/hvdc/kpi")
 def get_hvdc_kpi(
@@ -612,11 +626,21 @@ def get_metrics(x_api_key: Optional[str] = Header(None)):
     """Get basic system metrics"""
     _require_api_key(x_api_key)
     
+    cpu_percent = None
+    mem_percent = None
+    if _PSUTIL_AVAILABLE:
+        try:
+            cpu_percent = psutil.cpu_percent(interval=0.1)
+            mem_percent = psutil.virtual_memory().percent
+        except Exception:
+            cpu_percent = None
+            mem_percent = None
+
     return {
         "uptime_sec": int(time.time() - start_ts),
         "last_pipeline_epoch": _last_run,
-        "cpu_percent": psutil.cpu_percent(interval=0.1),
-        "mem_percent": psutil.virtual_memory().percent,
+        "cpu_percent": cpu_percent,
+        "mem_percent": mem_percent,
         "bronze_files_count": len(list(BRONZE_ROOT.rglob("*.jsonl"))) if BRONZE_ROOT.exists() else 0,
         "duckdb_enabled": DUCKDB_ENABLED,
         "hvdc_status": _get_hvdc_status()

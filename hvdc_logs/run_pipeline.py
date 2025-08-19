@@ -53,14 +53,31 @@ class HVDCPipeline:
             print("Running transformation...")
             self.conn.execute(sql_script)
 
-            # Check results
-            result = self.conn.execute("""
-                SELECT 'Bronze records' as layer, count(*) as count FROM bronze_logs
+            # Create/refresh a simple KPI view from silver table if available
+            self.conn.execute(
+                """
+                CREATE OR REPLACE VIEW v_kpi_daily AS
+                SELECT
+                  CAST(date_gst AS DATE) AS date,
+                  group_name,
+                  COUNT(*) AS logs_count,
+                  SUM(COALESCE(sla_breaches, 0)) AS total_sla_breaches
+                FROM
+                  sla_log
+                GROUP BY 1,2
+                """
+            )
+
+            # Check results using available tables
+            result = self.conn.execute(
+                """
+                SELECT 'Bronze records' as layer, count(*) as count FROM raw_logs
                 UNION ALL
-                SELECT 'Silver records' as layer, count(*) as count FROM silver_ready
+                SELECT 'Silver records' as layer, count(*) as count FROM sla_log
                 UNION ALL
                 SELECT 'Parquet files' as layer, count(*) as count FROM read_parquet('silver/logs/**/*.parquet')
-            """).fetchdf()
+                """
+            ).fetchdf()
 
             print("Transformation completed successfully!")
             print("\nPipeline Results:")
@@ -78,7 +95,7 @@ class HVDCPipeline:
     def query_data(self, date_from=None, date_to=None, group_name=None):
         """Query the transformed data"""
         query = """
-        SELECT date, group_name, logs_count, total_sla_breaches, unique_keywords_count
+        SELECT date, group_name, logs_count, total_sla_breaches
         FROM v_kpi_daily
         WHERE 1=1
         """
