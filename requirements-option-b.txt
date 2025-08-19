@@ -1,0 +1,7 @@
+polars
+pyarrow
+sentence-transformers
+faiss-cpu
+fastapi
+uvicorn
+sqlite-utils
